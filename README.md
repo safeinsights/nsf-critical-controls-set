@@ -816,7 +816,14 @@ control, library-driven IO) would translate to other clouds, but you'd
 need to write the GCP/Azure equivalents of `aws/audits/nsfN.py`.
 
 **Q. Where do I get help / report bugs?**
-This repository's issue tracker.
+This repository's issue tracker. For suspected security issues, see the
+"Security issues" section of [CONTRIBUTING.md](CONTRIBUTING.md) — please
+don't open a public issue for those.
+
+**Q. How do I contribute?**
+See [CONTRIBUTING.md](CONTRIBUTING.md) — it walks through dev setup,
+project conventions, the PR checklist, and a step-by-step guide for
+adding a new audit script.
 
 ---
 
@@ -825,6 +832,8 @@ This repository's issue tracker.
 ```
 nsf-critical-control-set/
 ├── README.md                                  ← you are here
+├── CONTRIBUTING.md                            ← how to develop / submit changes
+├── LICENSE                                    ← MIT
 └── aws/
     ├── audits/                                ← one script per control
     │   ├── nsf1.py … nsf13.py
