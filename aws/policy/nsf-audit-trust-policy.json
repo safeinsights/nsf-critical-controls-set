@@ -1,0 +1,18 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowAuditPrincipalToAssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::REPLACE_AUDIT_PRINCIPAL_ACCOUNT_ID:role/REPLACE_AUDIT_PRINCIPAL_ROLE_NAME"
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {
+                "StringEquals": {
+                    "sts:ExternalId": "REPLACE_EXTERNAL_ID"
+                }
+            }
+        }
+    ]
+}

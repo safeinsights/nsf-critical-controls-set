@@ -1,0 +1,12 @@
+[
+    {
+        "account": "123456789012",
+        "region": "us-east-1",
+        "identityStoreId": "d-12345abcde"
+    },
+    {
+        "account": "210987654321",
+        "region": "us-east-2",
+        "identityStoreId": "d-edcba54321"
+    }
+]

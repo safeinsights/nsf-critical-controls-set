@@ -1,0 +1,91 @@
+# ----------------------------------------------------------------------------
+# Python
+# ----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments (any common location/name)
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ----------------------------------------------------------------------------
+# Test / coverage artifacts
+# ----------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.cache
+nosetests.xml
+
+# ----------------------------------------------------------------------------
+# Operator-owned config copies (templates ship as *.example.json)
+# ----------------------------------------------------------------------------
+aws/config/accounts.json
+aws/config/identity-stores.json
+
+# ----------------------------------------------------------------------------
+# Audit output — generated CSV/JSON/YAML/text reports
+#
+# Reports are named `nsfN-YYYY-MM-DD.<ext>`. The patterns below ignore those
+# anywhere in the tree without ignoring the audit scripts themselves
+# (aws/audits/nsfN.py) or the policy/config JSON files.
+# ----------------------------------------------------------------------------
+nsf*-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].csv
+nsf*-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json
+nsf*-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].yaml
+nsf*-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].txt
+
+# Common output directories used in examples / Jenkins
+output/
+reports/
+/tmp/audit_test/
+
+# Log files
+*.log
+
+# ----------------------------------------------------------------------------
+# Secrets — credentials must NEVER be committed
+# ----------------------------------------------------------------------------
+.env
+.envrc
+*.pem
+*.key
+credentials.json
+service-account*.json
+aws-credentials*
+.aws/
+
+# ----------------------------------------------------------------------------
+# Editors / IDEs
+# ----------------------------------------------------------------------------
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.history/
+
+# ----------------------------------------------------------------------------
+# OS cruft
+# ----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
