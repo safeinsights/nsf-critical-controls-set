@@ -35,6 +35,12 @@ coverage.xml
 nosetests.xml
 
 # ----------------------------------------------------------------------------
+# Operator-owned config copies (templates ship as *.example.json)
+# ----------------------------------------------------------------------------
+aws/config/accounts.json
+aws/config/identity-stores.json
+
+# ----------------------------------------------------------------------------
 # Audit output — generated CSV/JSON/YAML/text reports
 #
 # Reports are named `nsfN-YYYY-MM-DD.<ext>`. The patterns below ignore those

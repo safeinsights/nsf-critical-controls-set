@@ -434,25 +434,31 @@ How to read this:
 ## 9. Configuration files
 
 Three optional JSON files in [aws/config/](aws/config/) let you avoid
-passing the same flags every time:
+passing the same flags every time. Two ship as `*.example.json`
+templates — copy them to the real names and edit before use.
 
 | File | Content | Used by |
 |---|---|---|
-| `accounts.json` | JSON list of 12-digit account ID strings | All scripts when `--accounts` is omitted |
+| `accounts.json` (template: `accounts.example.json`) | JSON list of 12-digit account ID strings — **your** accounts | All scripts when `--accounts` is omitted |
 | `regions.json` | JSON list of region names | Region-scoped scripts when `--regions` is omitted |
-| `identity-stores.json` | List of `{ "account": "...", "region": "...", "identityStoreId": "..." }` objects | Audits that walk AWS Identity Center |
+| `identity-stores.json` (template: `identity-stores.example.json`) | List of `{ "account": "...", "region": "...", "identityStoreId": "..." }` objects | Audits that walk AWS Identity Center |
 
-**Example `accounts.json`:**
+**To use them:**
 
-```json
-[
-    "123456789012",
-    "234567890123"
-]
+```bash
+cp aws/config/accounts.example.json aws/config/accounts.json
+$EDITOR aws/config/accounts.json    # replace placeholders with your real account IDs
 ```
 
+`accounts.json` and `identity-stores.json` are gitignored so your
+customised copies don't get committed (only the templates are tracked).
+`regions.json` ships as a full catalog of AWS regions and can be edited
+or pruned in place.
+
 If a file is missing and you don't pass the matching flag, the script
-fails with a clear error telling you what to do.
+fails with a clear error telling you what to do. This is deliberate: no
+silent default means the audit can never accidentally run against a
+placeholder account ID.
 
 Account IDs are validated as `^[0-9]{12}$` — non-numeric or wrong-length
 values are refused (so a tampered config can't redirect a role assumption

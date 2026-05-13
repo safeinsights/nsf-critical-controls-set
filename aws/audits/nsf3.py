@@ -31,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import argparse
 import logging
 import json
-import sys
 from typing import Any, Optional
 
 from lib.aws_common import (
@@ -195,7 +194,8 @@ def audit_iam_users(
                                 all_issues.extend(analysis['issues'])
                                 scope_parts.append(analysis['scope_description'])
                             except Exception as _e:
-                                warn_permission_error('aws-read', _e)
+                                if not warn_permission_error('aws-read', _e):
+                                    logger.warning("Non-permission error during aws-read: %s", _e)
             except Exception as e:
                 all_issues.append(f"Could not check policies: {e}")
 
@@ -216,7 +216,8 @@ def audit_iam_users(
                             all_issues.extend([f"Inline policy '{policy_name}': {i}" for i in analysis['issues']])
                             scope_parts.append(f"Inline({policy_name}): {analysis['scope_description']}")
                         except Exception as _e:
-                            warn_permission_error('aws-read', _e)
+                            if not warn_permission_error('aws-read', _e):
+                                logger.warning("Non-permission error during aws-read: %s", _e)
             except Exception as _e:
                 warn_permission_error('aws-read', _e)
 
@@ -333,7 +334,8 @@ def audit_iam_roles(
                                 all_issues.extend(analysis['issues'])
                                 scope_parts.append(analysis['scope_description'])
                             except Exception as _e:
-                                warn_permission_error('aws-read', _e)
+                                if not warn_permission_error('aws-read', _e):
+                                    logger.warning("Non-permission error during aws-read: %s", _e)
             except Exception as e:
                 all_issues.append(f"Could not check policies: {e}")
 
@@ -354,7 +356,8 @@ def audit_iam_roles(
                             all_issues.extend([f"Inline policy '{policy_name}': {i}" for i in analysis['issues']])
                             scope_parts.append(f"Inline({policy_name}): {analysis['scope_description']}")
                         except Exception as _e:
-                            warn_permission_error('aws-read', _e)
+                            if not warn_permission_error('aws-read', _e):
+                                logger.warning("Non-permission error during aws-read: %s", _e)
             except Exception as _e:
                 warn_permission_error('aws-read', _e)
 
@@ -445,7 +448,7 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
 
                 # Audit roles
                 role_results = audit_iam_roles(iam, account_id)
-                print(f"  Audited {len(role_results)} roles")
+                logger.info("Audited %d roles in account %s", len(role_results), account_id)
 
                 for result in role_results:
                     total_principals += 1

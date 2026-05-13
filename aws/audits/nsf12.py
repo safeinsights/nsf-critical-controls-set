@@ -73,7 +73,7 @@ def audit_inspector(
                     enabled_for.append(rtype)
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Inspector status check failed in {region}: %s", e)
+            logger.warning("Inspector status check failed in %s: %s", region, e)
 
     # Findings counts by severity
     severity_counts: dict[str, int] = {s: 0 for s in SEVERITIES}
@@ -88,7 +88,7 @@ def audit_inspector(
                     severity_counts[sev] += 1
     except Exception as e:
         if not warn_permission_error('aws-read', e) and 'not enabled' not in str(e).lower():
-            logger.warning("Inspector findings list failed in {region}: %s", e)
+            logger.warning("Inspector findings list failed in %s: %s", region, e)
 
     issues: list[str] = []
     if not enabled_for:
@@ -146,7 +146,7 @@ def audit_security_hub(
                         severity_counts[sev] += 1
         except Exception as e:
             if not warn_permission_error('aws-read', e):
-                logger.warning("Security Hub findings list failed in {region}: %s", e)
+                logger.warning("Security Hub findings list failed in %s: %s", region, e)
 
     issues: list[str] = []
     if not enabled:
@@ -197,7 +197,7 @@ def audit_ssm_patch_compliance(
                     non_compliant += 1
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("SSM patch compliance list failed in {region}: %s", e)
+            logger.warning("SSM patch compliance list failed in %s: %s", region, e)
 
     issues: list[str] = []
     if total == 0:
@@ -273,7 +273,7 @@ def run_audit(args) -> tuple[list[str], dict[str, Any]]:
                             csv_rows.append([r.get(h) for h in headers])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
         except Exception as e:
             logger.error("Error auditing account %s: %s", account_id, e)

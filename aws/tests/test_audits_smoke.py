@@ -117,3 +117,42 @@ def test_all_thirteen_scripts_present():
     """Regression guard — we should always have nsf1..nsf13."""
     expected = {f'nsf{i}' for i in range(1, 14)}
     assert set(SCRIPTS) == expected, f"Missing scripts: {expected - set(SCRIPTS)}"
+
+
+@pytest.mark.parametrize('name', SCRIPTS)
+def test_version_flag_present(name):
+    """Every script must expose --version (the action='version' argparse handler)."""
+    mod = importlib.import_module(f'audits.{name}')
+    parser_holder: dict[str, argparse.ArgumentParser] = {}
+    real_make = argparse.ArgumentParser.parse_args
+
+    def _capture(self, *a, **kw):
+        parser_holder['p'] = self
+        raise SystemExit(0)
+
+    argparse.ArgumentParser.parse_args = _capture
+    try:
+        with pytest.raises(SystemExit):
+            mod.main()
+    finally:
+        argparse.ArgumentParser.parse_args = real_make
+
+    parser = parser_holder['p']
+    version_action = next(
+        (a for a in parser._actions if '--version' in a.option_strings),
+        None,
+    )
+    assert version_action is not None, f"audits.{name} missing --version"
+    assert version_action.version  # non-empty version string
+
+
+def test_save_results_yaml_includes_version_metadata(tmp_path):
+    """The YAML payload (like JSON) must carry toolkit_version + generated_at_utc."""
+    import yaml as _yaml
+    from lib import aws_common
+    from lib.aws_common import save_results
+    files = save_results(str(tmp_path), 'demo', [{'a': 1}], {'count': 1},
+                         ['yaml'], headers=['a'])
+    payload = _yaml.safe_load(open(files[0]).read())
+    assert payload['summary']['toolkit_version'] == aws_common.__version__
+    assert payload['summary']['generated_at_utc'].endswith('Z')

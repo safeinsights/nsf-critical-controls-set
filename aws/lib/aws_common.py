@@ -23,7 +23,7 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -84,6 +84,11 @@ def get_logger(suffix: str) -> logging.Logger:
     """Return a child logger of `nsf_audit` (e.g. get_logger('nsf1'))."""
     return logging.getLogger(f"{LOGGER_NAME}.{suffix}")
 
+
+# Bump on every release. Surfaced in the `nsfN --version` CLI output and in
+# the JSON report's summary block so auditors can identify the build that
+# produced a given evidence file.
+__version__ = '1.0.0'
 
 # Directories
 SCRIPT_DIR = Path(__file__).parent           # lib/
@@ -477,19 +482,27 @@ def save_results(
     written: list[str] = []
     formats = [f.lower() for f in formats]
 
+    # Embed the toolkit version and a UTC timestamp in the JSON/YAML/text
+    # payloads so an auditor can identify which build produced this evidence.
+    summary_with_meta = {
+        'toolkit_version': __version__,
+        'generated_at_utc': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        **summary,
+    }
+
     for fmt in formats:
         if fmt == 'csv':
             rows = _records_to_rows(records, headers)
             written.append(save_csv(str(out_dir / f"{base_name}.csv"), rows, headers))
         elif fmt == 'json':
-            payload = {'summary': summary, 'records': records}
+            payload = {'summary': summary_with_meta, 'records': records}
             written.append(save_json(str(out_dir / f"{base_name}.json"), payload))
         elif fmt == 'yaml':
-            payload = {'summary': summary, 'records': records}
+            payload = {'summary': summary_with_meta, 'records': records}
             written.append(save_yaml(str(out_dir / f"{base_name}.yaml"), payload))
         elif fmt == 'text':
             written.append(save_text(
-                str(out_dir / f"{base_name}.txt"), records, summary, title=title))
+                str(out_dir / f"{base_name}.txt"), records, summary_with_meta, title=title))
         else:
             logger.warning("Unknown output format '%s', skipping.", fmt)
     return written
@@ -566,6 +579,12 @@ def parse_regions_arg(regions_arg: Optional[str]) -> list[str]:
 
 def add_common_arguments(parser) -> None:
     """Add the CLI args common to every NSF audit script."""
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'%(prog)s (NSF Critical Controls toolkit {__version__})',
+        help='Print the toolkit version and exit.',
+    )
     parser.add_argument(
         '--accounts',
         help='Comma-separated AWS account IDs (default: config/accounts.json, required if absent)'

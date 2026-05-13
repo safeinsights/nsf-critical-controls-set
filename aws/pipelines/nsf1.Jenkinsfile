@@ -3,6 +3,12 @@ pipeline {
     options {
         buildDiscarder(logRotator(numToKeepStr: '7'))
     }
+    environment {
+        // Override these three in Jenkins' global / folder env, or edit here.
+        NSF_REPO_URL    = "${env.NSF_REPO_URL ?: 'https://github.com/SafeInsights/nsf-critical-controls-set.git'}"
+        NSF_REPO_CRED   = "${env.NSF_REPO_CRED ?: 'github-pat'}"
+        NSF_NOTIFY_TO   = "${env.NSF_NOTIFY_TO ?: 'security@safeinsights.org'}"
+    }
     triggers {
         // Run daily at 6:00 AM UTC (midnight CST)
         cron('H 6 * * *')
@@ -11,8 +17,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/SafeInsights/nsf-critical-controls-set.git',
-                    credentialsId: 'github-pat'
+                    url: "${env.NSF_REPO_URL}",
+                    credentialsId: "${env.NSF_REPO_CRED}"
             }
         }
         stage('Setup Python') {
@@ -43,7 +49,7 @@ pipeline {
         }
         failure {
             emailext(
-                to: 'security@safeinsights.org',
+                to: "${env.NSF_NOTIFY_TO}",
                 subject: "NSF1 Audit Failed - Build ${env.BUILD_NUMBER}",
                 body: "NSF1 Phishing-resistant MFA for Privileged Accounts audit failed.\n\nCheck ${env.BUILD_URL} for details."
             )

@@ -30,7 +30,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 import logging
-import sys
 from typing import Any
 
 from lib.aws_common import (
@@ -156,7 +155,7 @@ def audit_backup_vaults(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking Backup vaults in {region}: %s", e)
+            logger.warning("Error checking Backup vaults in %s: %s", region, e)
 
     return results
 
@@ -285,6 +284,12 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
     """
     accounts = parse_accounts_arg(args.accounts)
     regions = parse_regions_arg(args.regions)
+    if "us-east-1" not in regions:
+        logger.warning(
+            "S3 audit step is gated on us-east-1 (S3 is a global service); "
+            "your --regions does not include it, so S3 buckets WILL NOT be inventoried. "
+            "Add us-east-1 to --regions for full coverage."
+        )
     output_dir = args.output_dir
     role_name = args.role
     date = current_date()
@@ -361,7 +366,7 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
                                 ])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
 
         except Exception as e:

@@ -33,7 +33,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 import logging
-import sys
 from typing import Any
 
 from lib.aws_common import (
@@ -123,7 +122,7 @@ def audit_vpcs(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking VPCs in {region}: %s", e)
+            logger.warning("Error checking VPCs in %s: %s", region, e)
 
     return results
 
@@ -242,7 +241,7 @@ def audit_subnets(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking subnets in {region}: %s", e)
+            logger.warning("Error checking subnets in %s: %s", region, e)
 
     return results
 
@@ -331,7 +330,7 @@ def audit_security_groups(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking security groups in {region}: %s", e)
+            logger.warning("Error checking security groups in %s: %s", region, e)
 
     return results
 
@@ -418,7 +417,7 @@ def audit_nacls(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking NACLs in {region}: %s", e)
+            logger.warning("Error checking NACLs in %s: %s", region, e)
 
     return results
 
@@ -499,7 +498,7 @@ def audit_vpc_endpoints(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking VPC endpoints in {region}: %s", e)
+            logger.warning("Error checking VPC endpoints in %s: %s", region, e)
 
     return results
 
@@ -647,7 +646,7 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
                             ])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
 
         except Exception as e:

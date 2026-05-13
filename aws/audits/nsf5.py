@@ -31,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 import logging
-import sys
 from typing import Any
 
 from lib.aws_common import (
@@ -221,7 +220,7 @@ def audit_guardduty_edr(
         pass
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking GuardDuty EDR in {region}: %s", e)
+            logger.warning("Error checking GuardDuty EDR in %s: %s", region, e)
 
     return results
 
@@ -286,7 +285,7 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
                             ])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
 
         except Exception as e:

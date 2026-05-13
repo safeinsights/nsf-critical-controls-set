@@ -74,7 +74,7 @@ def audit_config_service(
             recorder_running = recorder_running or st.get('recording', False)
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Config recorder check failed in {region}: %s", e)
+            logger.warning("Config recorder check failed in %s: %s", region, e)
 
     # Delivery channel
     delivery_configured = False
@@ -82,7 +82,8 @@ def audit_config_service(
         channels = config_client.describe_delivery_channels().get('DeliveryChannels', [])
         delivery_configured = len(channels) > 0
     except Exception as _e:
-        warn_permission_error('aws-read', _e)
+        if not warn_permission_error('aws-read', _e):
+            logger.warning("Non-permission error during aws-read: %s", _e)
 
     issues: list[str] = []
     if not recorder_running:
@@ -123,7 +124,7 @@ def audit_config_service(
                         non_compliant_rule_names.append(name)
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Config rule compliance failed in {region}: %s", e)
+            logger.warning("Config rule compliance failed in %s: %s", region, e)
 
     rule_issues: list[str] = []
     if total_rules == 0:
@@ -153,7 +154,8 @@ def audit_config_service(
         for page in paginator.paginate():
             conformance_pack_count += len(page.get('ConformancePackDetails', []))
     except Exception as _e:
-        warn_permission_error('aws-read', _e)
+        if not warn_permission_error('aws-read', _e):
+            logger.warning("Non-permission error during aws-read: %s", _e)
 
     pack_issues: list[str] = []
     if conformance_pack_count == 0:
@@ -197,7 +199,7 @@ def audit_security_hub_standards(
                 enabled_standards.append('NIST-800-53')
     except Exception as e:
         if not warn_permission_error('aws-read', e) and 'not subscribed' not in str(e).lower():
-            logger.warning("Security Hub standards check failed in {region}: %s", e)
+            logger.warning("Security Hub standards check failed in %s: %s", region, e)
 
     issues: list[str] = []
     if not enabled_standards:
@@ -234,7 +236,7 @@ def audit_ssm_state_manager(
             association_count += len(page.get('Associations', []))
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("SSM State Manager check failed in {region}: %s", e)
+            logger.warning("SSM State Manager check failed in %s: %s", region, e)
 
     issues: list[str] = []
     if association_count == 0:
@@ -303,7 +305,7 @@ def run_audit(args) -> tuple[list[str], dict[str, Any]]:
                             csv_rows.append([r.get(h) for h in headers])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
         except Exception as e:
             logger.error("Error auditing account %s: %s", account_id, e)

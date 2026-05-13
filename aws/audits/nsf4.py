@@ -31,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 import logging
-import sys
 from typing import Any, Optional
 
 from lib.aws_common import (
@@ -186,7 +185,7 @@ def audit_guardduty(
         pass
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking GuardDuty in {region}: %s", e)
+            logger.warning("Error checking GuardDuty in %s: %s", region, e)
 
     return results
 
@@ -272,7 +271,7 @@ def audit_ssm_managed_instances(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking SSM instances in {region}: %s", e)
+            logger.warning("Error checking SSM instances in %s: %s", region, e)
 
     return results
 
@@ -350,7 +349,7 @@ def audit_security_hub(
         })
     except Exception as e:
         if not warn_permission_error('aws-read', e) and 'not subscribed' not in str(e).lower():
-            logger.warning("Error checking Security Hub in {region}: %s", e)
+            logger.warning("Error checking Security Hub in %s: %s", region, e)
 
     return results
 
@@ -470,7 +469,7 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
                                 ])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
 
         except Exception as e:

@@ -31,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 import logging
-import sys
 from datetime import datetime, timezone
 from typing import Any
 
@@ -105,7 +104,8 @@ def inventory_vpn_endpoints(
                     'issues': issues
                 })
         except Exception as _e:
-            warn_permission_error('aws-read', _e)
+            if not warn_permission_error('aws-read', _e):
+                logger.warning("Non-permission error during aws-read: %s", _e)
 
         # Site-to-Site VPN connections
         try:
@@ -136,11 +136,12 @@ def inventory_vpn_endpoints(
                     'issues': issues
                 })
         except Exception as _e:
-            warn_permission_error('aws-read', _e)
+            if not warn_permission_error('aws-read', _e):
+                logger.warning("Non-permission error during aws-read: %s", _e)
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error inventorying VPN endpoints in {region}: %s", e)
+            logger.warning("Error inventorying VPN endpoints in %s: %s", region, e)
 
     return results
 
@@ -195,7 +196,7 @@ def inventory_transit_gateways(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error inventorying Transit Gateways in {region}: %s", e)
+            logger.warning("Error inventorying Transit Gateways in %s: %s", region, e)
 
     return results
 
@@ -250,7 +251,7 @@ def inventory_direct_connect(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error inventorying Direct Connect in {region}: %s", e)
+            logger.warning("Error inventorying Direct Connect in %s: %s", region, e)
 
     return results
 
@@ -301,7 +302,7 @@ def inventory_directory_services(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error inventorying Directory Services in {region}: %s", e)
+            logger.warning("Error inventorying Directory Services in %s: %s", region, e)
 
     return results
 
@@ -346,7 +347,8 @@ def inventory_route53_zones(
                     )
                     tags = {tag.get('Key'): tag.get('Value') for tag in tag_response.get('ResourceTagSet', {}).get('Tags', [])}
                 except Exception as _e:
-                    warn_permission_error('aws-read', _e)
+                    if not warn_permission_error('aws-read', _e):
+                        logger.warning("Non-permission error during aws-read: %s", _e)
 
                 has_required_tags = 'Name' in tags or bool(zone_name)
                 issues = []
@@ -416,7 +418,8 @@ def inventory_iam_resources(
                 'issues': []
             })
         except Exception as _e:
-            warn_permission_error('aws-read', _e)
+            if not warn_permission_error('aws-read', _e):
+                logger.warning("Non-permission error during aws-read: %s", _e)
 
         # Account password policy
         try:
@@ -486,7 +489,8 @@ def inventory_iam_resources(
                     'issues': []
                 })
         except Exception as _e:
-            warn_permission_error('aws-read', _e)
+            if not warn_permission_error('aws-read', _e):
+                logger.warning("Non-permission error during aws-read: %s", _e)
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
@@ -535,7 +539,7 @@ def inventory_identity_center(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e) and 'is not enabled' not in str(e).lower():
-            logger.warning("Error inventorying Identity Center in {region}: %s", e)
+            logger.warning("Error inventorying Identity Center in %s: %s", region, e)
 
     return results
 
@@ -767,10 +771,11 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
                                     '; '.join(result['issues']) if result['issues'] else 'None'
                                 ])
                         except Exception as _e:
-                            warn_permission_error('aws-read', _e)
+                            if not warn_permission_error('aws-read', _e):
+                                logger.warning("Non-permission error during aws-read: %s", _e)
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
 
         except Exception as e:

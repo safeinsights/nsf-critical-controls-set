@@ -30,7 +30,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 import logging
-import sys
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -217,7 +216,7 @@ def audit_restore_jobs(
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking restore jobs in {region}: %s", e)
+            logger.warning("Error checking restore jobs in %s: %s", region, e)
 
     return results
 
@@ -287,11 +286,11 @@ def audit_backup_plans_for_restore_testing(
 
                 except Exception as e:
                     if not warn_permission_error('aws-read', e):
-                        logger.warning("Error getting backup plan {plan_id}: %s", e)
+                        logger.warning("Error getting backup plan %s: %s", plan_id, e)
 
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error listing backup plans in {region}: %s", e)
+            logger.warning("Error listing backup plans in %s: %s", region, e)
 
     return results
 
@@ -363,7 +362,7 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
                             ])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
 
         except Exception as e:

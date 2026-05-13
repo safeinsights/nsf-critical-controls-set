@@ -312,7 +312,12 @@ class TestSaveResults:
         files = save_results(str(tmp_path), 'demo', [{'a': 1}], {'count': 1},
                              ['json'], headers=['a'])
         payload = json.loads(Path(files[0]).read_text())
-        assert payload == {'summary': {'count': 1}, 'records': [{'a': 1}]}
+        assert payload['records'] == [{'a': 1}]
+        # Caller-supplied summary fields are preserved…
+        assert payload['summary']['count'] == 1
+        # …and save_results adds chain-of-custody metadata.
+        assert payload['summary']['toolkit_version'] == aws_common.__version__
+        assert payload['summary']['generated_at_utc'].endswith('Z')
 
 
 # ---------------------------------------------------------------------------

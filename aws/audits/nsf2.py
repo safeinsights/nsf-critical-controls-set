@@ -30,7 +30,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import argparse
 import logging
 import json
-import sys
 from typing import Any, Optional
 
 from lib.aws_common import (
@@ -132,10 +131,10 @@ def audit_client_vpn_endpoints(
 
     except ec2_client.exceptions.ClientError as e:
         if 'is not authorized' not in str(e) and 'AccessDenied' not in str(e):
-            logger.warning("Could not check Client VPN in {region}: %s", e)
+            logger.warning("Could not check Client VPN in %s: %s", region, e)
     except Exception as e:
         if 'does not exist' not in str(e):
-            logger.warning("Error checking Client VPN in {region}: %s", e)
+            logger.warning("Error checking Client VPN in %s: %s", region, e)
 
     return results
 
@@ -215,10 +214,10 @@ def audit_workspaces_directories(
 
     except workspaces_client.exceptions.ClientError as e:
         if 'is not authorized' not in str(e) and 'AccessDenied' not in str(e):
-            logger.warning("Could not check WorkSpaces in {region}: %s", e)
+            logger.warning("Could not check WorkSpaces in %s: %s", region, e)
     except Exception as e:
         if 'not subscribed' not in str(e).lower():
-            logger.warning("Error checking WorkSpaces in {region}: %s", e)
+            logger.warning("Error checking WorkSpaces in %s: %s", region, e)
 
     return results
 
@@ -301,7 +300,7 @@ def audit_ssm_session_preferences(
         })
     except Exception as e:
         if not warn_permission_error('aws-read', e):
-            logger.warning("Error checking Session Manager in {region}: %s", e)
+            logger.warning("Error checking Session Manager in %s: %s", region, e)
 
     return results
 
@@ -500,7 +499,7 @@ def run_audit(args) -> tuple[str, dict[str, Any]]:
                             ])
 
                     except Exception as e:
-                        logger.warning("Error in region {region}: %s", e)
+                        logger.warning("Error in region %s: %s", region, e)
                         continue
 
         except Exception as e:
