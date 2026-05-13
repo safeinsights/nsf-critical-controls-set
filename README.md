@@ -2,7 +2,7 @@
 
 Python scripts that collect evidence from your AWS accounts to show how
 well you meet each of the
-[NSF Critical Controls](../NSF_CRITICAL_CONTROLS_SET.csv). One script per
+[NSF Critical Controls](https://nsf-gov-resources.nsf.gov/files/Research-Infrastructure-Guide-January-2025.pdf), section 5.3.6, page 308. One script per
 control. Each script logs into AWS (read-only), inspects the relevant
 services, and writes a report you can hand to an auditor.
 
@@ -23,13 +23,13 @@ services, and writes a report you can hand to an auditor.
 ## Table of contents
 
 1. [What this does, in plain English](#1-what-this-does-in-plain-english)
-2. [Glossary — terms you'll see](#2-glossary--terms-youll-see)
-3. [Before you start (prerequisites)](#3-before-you-start-prerequisites)
-4. [Installation walkthrough](#4-installation-walkthrough)
-5. [Setting up AWS access](#5-setting-up-aws-access)
-6. [Running your first audit](#6-running-your-first-audit)
-7. [Understanding the report](#7-understanding-the-report)
-8. [The controls explained](#8-the-controls-explained)
+2. [The controls explained](#2-the-controls-explained)
+3. [Glossary — terms you'll see](#3-glossary--terms-youll-see)
+4. [Before you start (prerequisites)](#4-before-you-start-prerequisites)
+5. [Installation walkthrough](#5-installation-walkthrough)
+6. [Setting up AWS access](#6-setting-up-aws-access)
+7. [Running your first audit](#7-running-your-first-audit)
+8. [Understanding the report](#8-understanding-the-report)
 9. [Configuration files](#9-configuration-files)
 10. [Output formats](#10-output-formats)
 11. [Logging and verbosity](#11-logging-and-verbosity)
@@ -72,284 +72,7 @@ contains nothing but `Get*`, `List*`, and `Describe*` actions.
 
 ---
 
-## 2. Glossary — terms you'll see
-
-If any of these are unfamiliar, the rest of this README will make a lot more
-sense after a quick read of this section.
-
-| Term | What it means here |
-|---|---|
-| **AWS account** | A separate AWS bill / login. Has a 12-digit numeric ID like `123456789012`. Most organizations have several (production, staging, sandbox, …). |
-| **Region** | A geographic location where AWS runs your stuff — e.g. `us-east-1` (Virginia), `us-west-2` (Oregon). Many services are per-region; the scripts loop over the regions you care about. |
-| **IAM** | "Identity and Access Management". The AWS service that controls *who* can do *what*. |
-| **IAM role** | A named bundle of permissions that other things (a person, a server, a script, another AWS account) can *temporarily assume*. The audit role is the role this toolkit uses while running. |
-| **Assume role** | The act of asking AWS for short-lived credentials that grant you a specific role's permissions. The scripts do this once per AWS account. |
-| **IAM policy** | A JSON document that lists allowed (or denied) AWS actions. Two flavors here: a **permissions policy** says what the role can *do*; a **trust policy** says who can *become* the role. |
-| **MFA** | Multi-factor authentication. Phishing-resistant MFA = FIDO2/WebAuthn keys (YubiKey, etc.) or hardware OTP tokens. Virtual MFA apps (Google Authenticator, Authy) are *not* phishing-resistant. |
-| **External ID** | An extra secret string the assume-role caller must present. Recommended baseline for trust policies — defeats the "confused deputy" risk. |
-| **AWS profile** | A named set of credentials in your `~/.aws/credentials` file. Useful if you switch between multiple AWS environments. |
-| **CloudTrail / GuardDuty / Inspector / Security Hub / AWS Config** | AWS services this toolkit reads from. You don't have to enable all of them, but where they are enabled they provide evidence for several controls. |
-| **CSV** | Comma-Separated Values — the default report format. Opens in Excel / Google Sheets. |
-| **CI / Jenkins** | "Continuous Integration" — a server that runs scripts on a schedule. The toolkit ships Jenkinsfiles so you can run audits nightly. |
-
----
-
-## 3. Before you start (prerequisites)
-
-You'll need:
-
-- **A computer running macOS, Linux, or Windows (WSL).** The scripts haven't
-  been tested on native Windows PowerShell but should work; WSL is safer.
-- **Python 3.10 or newer.** Check with `python3 --version`. If you don't
-  have it, install from [python.org](https://www.python.org/downloads/) or
-  via your package manager (`brew install python3` / `apt install python3`).
-- **Internet access** to download Python packages and to talk to AWS.
-- **AWS read access** to whichever accounts you want to audit (see
-  [§5 Setting up AWS access](#5-setting-up-aws-access)).
-- **About 30 minutes** for first-time setup, then ~1 minute per audit run
-  thereafter.
-
-You do **not** need to be a developer, but you should be comfortable with:
-
-- Opening a terminal / command prompt.
-- Copy-pasting commands.
-- Editing a text file.
-
----
-
-## 4. Installation walkthrough
-
-### 4a. Open a terminal in the project folder
-
-Wherever you cloned this repo, change into the `nsf-critical-control-set`
-directory:
-
-```bash
-cd path/to/nsf-critical-control-set
-```
-
-### 4b. Create a Python virtual environment
-
-A *virtual environment* keeps the toolkit's Python packages separate from
-the rest of your system. Run this once:
-
-```bash
-cd aws
-python3 -m venv venv
-```
-
-That creates a folder called `venv/` inside `aws/`.
-
-### 4c. Activate the virtual environment
-
-You need to do this **every time** you open a new terminal:
-
-```bash
-# macOS / Linux
-. venv/bin/activate
-
-# Windows PowerShell
-.\venv\Scripts\Activate.ps1
-```
-
-Your prompt will gain a `(venv)` prefix. That tells you the right Python
-is active.
-
-### 4d. Install the dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-This installs `boto3` (AWS SDK) and `pyyaml` (YAML support). Should take
-under a minute.
-
-### 4e. Sanity check
-
-```bash
-python3 audits/nsf1.py --help
-```
-
-You should see a help screen listing flags like `--accounts` and
-`--regions`. If you get a `ModuleNotFoundError`, step 4d didn't run inside
-the activated venv — re-do step 4c, then 4d.
-
-You're done with installation.
-
----
-
-## 5. Setting up AWS access
-
-The scripts need to read your AWS configuration. There are three ways to
-give them access, in order of recommendation:
-
-### 5a. Recommended: a dedicated read-only audit role (production)
-
-This is the right setup for any recurring / unattended audit (Jenkins, cron).
-
-1. In **each** AWS account you want to audit, create an IAM role named
-   `NSF-AuditReadOnly` (any name works — this is the example).
-2. Attach the permissions policy at
-   [aws/policy/nsf-audit-policy.json](aws/policy/nsf-audit-policy.json) to
-   that role.
-3. Set the role's trust policy so that the principal who runs the audit
-   (a person, an EC2 instance, or a Jenkins server) is allowed to *assume*
-   the role. Use [aws/policy/nsf-audit-trust-policy.json](aws/policy/nsf-audit-trust-policy.json)
-   as a template — replace the three placeholders.
-4. Read [aws/policy/README.md](aws/policy/README.md) for the exact
-   `aws iam create-role` / `aws iam put-role-policy` commands.
-
-Then run the scripts with `--role NSF-AuditReadOnly` (and, if your trust
-policy requires it, `--external-id <secret>`).
-
-### 5b. Simpler: an AWS named profile (workstation)
-
-If you already use the AWS CLI and have profiles configured in
-`~/.aws/credentials` / `~/.aws/config`, you can point the scripts at one:
-
-```bash
-python3 audits/nsf1.py --profile my-audit-profile --accounts 123456789012 --regions us-east-1
-```
-
-Don't have profiles yet? Run `aws configure` (from the AWS CLI) and follow
-the prompts. AWS provides
-[a guide here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
-
-### 5c. Simplest (one-off): export AWS credentials in your shell
-
-If you have temporary AWS credentials (from SSO or `aws sts assume-role`),
-export them and run with no `--role` / `--profile` flag:
-
-```bash
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
-export AWS_SESSION_TOKEN=...      # if temporary credentials
-python3 audits/nsf1.py --accounts 123456789012 --regions us-east-1
-```
-
-### Which credential method does the script actually use?
-
-The script picks one strategy per AWS account, in this priority order:
-
-1. **Assume a role** — if `--role` (or the `NSF_AUDIT_ROLE` environment
-   variable) is set, the script calls AWS STS and assumes that role into
-   each account. This is what you want for production.
-2. **Named profile** — if only `--profile` is set, that profile's
-   credentials are used directly. The script does **not** call AWS STS in
-   this mode; it expects the profile to already grant the needed
-   read-only permissions.
-3. **Default credentials** — if neither is set, boto3's default credential
-   chain runs (environment variables → shared credentials → EC2 instance
-   role → SSO).
-
----
-
-## 6. Running your first audit
-
-Let's run `nsf1.py` — the simplest audit (it only reads IAM, which is a
-global service, so no `--regions` is required).
-
-### 6a. Make sure your credentials are working
-
-```bash
-aws sts get-caller-identity
-```
-
-You should see your account ID and a user/role ARN. If you get an error,
-your AWS credentials aren't set up — go back to [§5](#5-setting-up-aws-access).
-
-### 6b. Run the audit
-
-If you have a single AWS account and are using your default credentials:
-
-```bash
-python3 audits/nsf1.py --accounts 123456789012
-```
-
-Replace `123456789012` with your real account ID (12 digits).
-
-### 6c. Read the output
-
-While the script runs you'll see log lines on stderr:
-
-```
-2026-05-13T12:00:00-0500 [INFO   ] nsf_audit.nsf1: NSF1 audit starting: Phishing-resistant MFA for Privileged Accounts
-2026-05-13T12:00:00-0500 [INFO   ] nsf_audit.nsf1: Date=2026-05-13 accounts=1 role=None
-2026-05-13T12:00:00-0500 [INFO   ] nsf_audit.nsf1: Auditing account: 123456789012
-2026-05-13T12:00:02-0500 [INFO   ] nsf_audit.nsf1: Audited 12 users in account 123456789012
-2026-05-13T12:00:02-0500 [INFO   ] nsf_audit: Saved CSV: /…/nsf1-2026-05-13.csv (13 rows)
-```
-
-Then a summary on stdout:
-
-```
-======================================================================
-NSF1 AUDIT SUMMARY
-======================================================================
-Total Users Scanned:     13
-Privileged Users:        4
-Compliant:               3
-Non-Compliant:           1
-
-Reports saved:
-  /path/to/cwd/nsf1-2026-05-13.csv
-```
-
-A report file `nsf1-2026-05-13.csv` is now in your current directory. Open
-it in Excel, Numbers, or Google Sheets.
-
-### 6d. The script's exit code
-
-The script returns an exit code so you (or CI) can tell whether the audit
-"passed":
-
-| Exit code | Meaning |
-|---|---|
-| `0` | All audited resources are compliant. |
-| `1` | One or more non-compliant findings **OR** one or more permission errors during the run (see [§15](#15-evidence-integrity-guarantees)). |
-| `130` | You hit Ctrl+C. |
-
-In CI, treat non-zero as "review the report".
-
----
-
-## 7. Understanding the report
-
-Each report is a flat table. Columns vary by control, but the last three
-are always:
-
-- **Compliant** — `True` if this resource meets the control's bar, `False`
-  otherwise.
-- **Issues** — short text describing *why* the resource is non-compliant
-  (e.g. "Privileged user without MFA").
-- **AuditErrors** (some scripts) — populated when the script couldn't read
-  what it needed to (typically AWS returned AccessDenied). Any non-empty
-  value here means *you can't trust the Compliant column for this row* —
-  fix the IAM permissions and re-run.
-
-### Example: `nsf1-2026-05-13.csv`
-
-| AccountId | UserName | UserArn | IsPrivileged | PrivilegedPolicies | MFAEnabled | MFAType | PhishingResistant | Compliant | Issues | AuditErrors |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 123456789012 | `<root_account>` | arn:...:root | True | Root Account (full access) | True | Unknown (root) | False | True | None | None |
-| 123456789012 | alice | arn:...:user/alice | True | AdministratorAccess | True | FIDO2/U2F | True | True | None | None |
-| 123456789012 | bob | arn:...:user/bob | True | AdministratorAccess | True | Virtual (TOTP) | False | False | Privileged user with non-phishing-resistant MFA (Virtual (TOTP)) | None |
-| 123456789012 | carol | arn:...:user/carol | False | None | False | None | False | True | None | None |
-
-How to read this:
-- **alice** (admin with a YubiKey) — compliant.
-- **bob** (admin with only Google Authenticator) — *non-compliant*; you
-  need to issue bob a hardware key.
-- **carol** (regular user without MFA) — compliant for *this* control;
-  this control only governs *privileged* users.
-- **root account** — has MFA enabled. AWS doesn't expose the MFA type for
-  the root account, so the script can only confirm "MFA on/off", not
-  whether it's phishing-resistant. You should manually verify the root
-  account uses a hardware key.
-
----
-
-## 8. The controls explained
+## 2. The controls explained
 
 Each script audits one NSF Critical Control. Click the script link to read
 its docstring and code.
@@ -391,6 +114,284 @@ intentionally not automated. You need to maintain the IR Plan document and
 the tabletop exercise records by hand.
 
 ---
+
+## 3. Glossary — terms you'll see
+
+If any of these are unfamiliar, the rest of this README will make a lot more
+sense after a quick read of this section.
+
+| Term | What it means here |
+|---|---|
+| **AWS account** | A separate AWS bill / login. Has a 12-digit numeric ID like `123456789012`. Most organizations have several (production, staging, sandbox, …). |
+| **Region** | A geographic location where AWS runs your stuff — e.g. `us-east-1` (Virginia), `us-west-2` (Oregon). Many services are per-region; the scripts loop over the regions you care about. |
+| **IAM** | "Identity and Access Management". The AWS service that controls *who* can do *what*. |
+| **IAM role** | A named bundle of permissions that other things (a person, a server, a script, another AWS account) can *temporarily assume*. The audit role is the role this toolkit uses while running. |
+| **Assume role** | The act of asking AWS for short-lived credentials that grant you a specific role's permissions. The scripts do this once per AWS account. |
+| **IAM policy** | A JSON document that lists allowed (or denied) AWS actions. Two flavors here: a **permissions policy** says what the role can *do*; a **trust policy** says who can *become* the role. |
+| **MFA** | Multi-factor authentication. Phishing-resistant MFA = FIDO2/WebAuthn keys (YubiKey, etc.) or hardware OTP tokens. Virtual MFA apps (Google Authenticator, Authy) are *not* phishing-resistant. |
+| **External ID** | An extra secret string the assume-role caller must present. Recommended baseline for trust policies — defeats the "confused deputy" risk. |
+| **AWS profile** | A named set of credentials in your `~/.aws/credentials` file. Useful if you switch between multiple AWS environments. |
+| **CloudTrail / GuardDuty / Inspector / Security Hub / AWS Config** | AWS services this toolkit reads from. You don't have to enable all of them, but where they are enabled they provide evidence for several controls. |
+| **CSV** | Comma-Separated Values — the default report format. Opens in Excel / Google Sheets. |
+| **CI / Jenkins** | "Continuous Integration" — a server that runs scripts on a schedule. The toolkit ships Jenkinsfiles so you can run audits nightly. |
+
+---
+
+## 4. Before you start (prerequisites)
+
+You'll need:
+
+- **A computer running macOS, Linux, or Windows (WSL).** The scripts haven't
+  been tested on native Windows PowerShell but should work; WSL is safer.
+- **Python 3.10 or newer.** Check with `python3 --version`. If you don't
+  have it, install from [python.org](https://www.python.org/downloads/) or
+  via your package manager (`brew install python3` / `apt install python3`).
+- **Internet access** to download Python packages and to talk to AWS.
+- **AWS read access** to whichever accounts you want to audit (see
+  [§6 Setting up AWS access](#6-setting-up-aws-access)).
+- **About 30 minutes** for first-time setup, then ~1 minute per audit run
+  thereafter.
+
+You do **not** need to be a developer, but you should be comfortable with:
+
+- Opening a terminal / command prompt.
+- Copy-pasting commands.
+- Editing a text file.
+
+---
+
+## 5. Installation walkthrough
+
+### 5a. Open a terminal in the project folder
+
+Wherever you cloned this repo, change into the `nsf-critical-control-set`
+directory:
+
+```bash
+cd path/to/nsf-critical-control-set
+```
+
+### 5b. Create a Python virtual environment
+
+A *virtual environment* keeps the toolkit's Python packages separate from
+the rest of your system. Run this once:
+
+```bash
+cd aws
+python3 -m venv venv
+```
+
+That creates a folder called `venv/` inside `aws/`.
+
+### 5c. Activate the virtual environment
+
+You need to do this **every time** you open a new terminal:
+
+```bash
+# macOS / Linux
+. venv/bin/activate
+
+# Windows PowerShell
+.\venv\Scripts\Activate.ps1
+```
+
+Your prompt will gain a `(venv)` prefix. That tells you the right Python
+is active.
+
+### 5d. Install the dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs `boto3` (AWS SDK) and `pyyaml` (YAML support). Should take
+under a minute.
+
+### 5e. Sanity check
+
+```bash
+python3 audits/nsf1.py --help
+```
+
+You should see a help screen listing flags like `--accounts` and
+`--regions`. If you get a `ModuleNotFoundError`, step 4d didn't run inside
+the activated venv — re-do step 4c, then 4d.
+
+You're done with installation.
+
+---
+
+## 6. Setting up AWS access
+
+The scripts need to read your AWS configuration. There are three ways to
+give them access, in order of recommendation:
+
+### 6a. Recommended: a dedicated read-only audit role (production)
+
+This is the right setup for any recurring / unattended audit (Jenkins, cron).
+
+1. In **each** AWS account you want to audit, create an IAM role named
+   `NSF-AuditReadOnly` (any name works — this is the example).
+2. Attach the permissions policy at
+   [aws/policy/nsf-audit-policy.json](aws/policy/nsf-audit-policy.json) to
+   that role.
+3. Set the role's trust policy so that the principal who runs the audit
+   (a person, an EC2 instance, or a Jenkins server) is allowed to *assume*
+   the role. Use [aws/policy/nsf-audit-trust-policy.json](aws/policy/nsf-audit-trust-policy.json)
+   as a template — replace the three placeholders.
+4. Read [aws/policy/README.md](aws/policy/README.md) for the exact
+   `aws iam create-role` / `aws iam put-role-policy` commands.
+
+Then run the scripts with `--role NSF-AuditReadOnly` (and, if your trust
+policy requires it, `--external-id <secret>`).
+
+### 6b. Simpler: an AWS named profile (workstation)
+
+If you already use the AWS CLI and have profiles configured in
+`~/.aws/credentials` / `~/.aws/config`, you can point the scripts at one:
+
+```bash
+python3 audits/nsf1.py --profile my-audit-profile --accounts 123456789012 --regions us-east-1
+```
+
+Don't have profiles yet? Run `aws configure` (from the AWS CLI) and follow
+the prompts. AWS provides
+[a guide here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
+
+### 6c. Simplest (one-off): export AWS credentials in your shell
+
+If you have temporary AWS credentials (from SSO or `aws sts assume-role`),
+export them and run with no `--role` / `--profile` flag:
+
+```bash
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_SESSION_TOKEN=...      # if temporary credentials
+python3 audits/nsf1.py --accounts 123456789012 --regions us-east-1
+```
+
+### Which credential method does the script actually use?
+
+The script picks one strategy per AWS account, in this priority order:
+
+1. **Assume a role** — if `--role` (or the `NSF_AUDIT_ROLE` environment
+   variable) is set, the script calls AWS STS and assumes that role into
+   each account. This is what you want for production.
+2. **Named profile** — if only `--profile` is set, that profile's
+   credentials are used directly. The script does **not** call AWS STS in
+   this mode; it expects the profile to already grant the needed
+   read-only permissions.
+3. **Default credentials** — if neither is set, boto3's default credential
+   chain runs (environment variables → shared credentials → EC2 instance
+   role → SSO).
+
+---
+
+## 7. Running your first audit
+
+Let's run `nsf1.py` — the simplest audit (it only reads IAM, which is a
+global service, so no `--regions` is required).
+
+### 7a. Make sure your credentials are working
+
+```bash
+aws sts get-caller-identity
+```
+
+You should see your account ID and a user/role ARN. If you get an error,
+your AWS credentials aren't set up — go back to [§6](#6-setting-up-aws-access).
+
+### 7b. Run the audit
+
+If you have a single AWS account and are using your default credentials:
+
+```bash
+python3 audits/nsf1.py --accounts 123456789012
+```
+
+Replace `123456789012` with your real account ID (12 digits).
+
+### 7c. Read the output
+
+While the script runs you'll see log lines on stderr:
+
+```
+2026-05-13T12:00:00-0500 [INFO   ] nsf_audit.nsf1: NSF1 audit starting: Phishing-resistant MFA for Privileged Accounts
+2026-05-13T12:00:00-0500 [INFO   ] nsf_audit.nsf1: Date=2026-05-13 accounts=1 role=None
+2026-05-13T12:00:00-0500 [INFO   ] nsf_audit.nsf1: Auditing account: 123456789012
+2026-05-13T12:00:02-0500 [INFO   ] nsf_audit.nsf1: Audited 12 users in account 123456789012
+2026-05-13T12:00:02-0500 [INFO   ] nsf_audit: Saved CSV: /…/nsf1-2026-05-13.csv (13 rows)
+```
+
+Then a summary on stdout:
+
+```
+======================================================================
+NSF1 AUDIT SUMMARY
+======================================================================
+Total Users Scanned:     13
+Privileged Users:        4
+Compliant:               3
+Non-Compliant:           1
+
+Reports saved:
+  /path/to/cwd/nsf1-2026-05-13.csv
+```
+
+A report file `nsf1-2026-05-13.csv` is now in your current directory. Open
+it in Excel, Numbers, or Google Sheets.
+
+### 7d. The script's exit code
+
+The script returns an exit code so you (or CI) can tell whether the audit
+"passed":
+
+| Exit code | Meaning |
+|---|---|
+| `0` | All audited resources are compliant. |
+| `1` | One or more non-compliant findings **OR** one or more permission errors during the run (see [§15](#15-evidence-integrity-guarantees)). |
+| `130` | You hit Ctrl+C. |
+
+In CI, treat non-zero as "review the report".
+
+---
+
+## 8. Understanding the report
+
+Each report is a flat table. Columns vary by control, but the last three
+are always:
+
+- **Compliant** — `True` if this resource meets the control's bar, `False`
+  otherwise.
+- **Issues** — short text describing *why* the resource is non-compliant
+  (e.g. "Privileged user without MFA").
+- **AuditErrors** (some scripts) — populated when the script couldn't read
+  what it needed to (typically AWS returned AccessDenied). Any non-empty
+  value here means *you can't trust the Compliant column for this row* —
+  fix the IAM permissions and re-run.
+
+### Example: `nsf1-2026-05-13.csv`
+
+| AccountId | UserName | UserArn | IsPrivileged | PrivilegedPolicies | MFAEnabled | MFAType | PhishingResistant | Compliant | Issues | AuditErrors |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 123456789012 | `<root_account>` | arn:...:root | True | Root Account (full access) | True | Unknown (root) | False | True | None | None |
+| 123456789012 | alice | arn:...:user/alice | True | AdministratorAccess | True | FIDO2/U2F | True | True | None | None |
+| 123456789012 | bob | arn:...:user/bob | True | AdministratorAccess | True | Virtual (TOTP) | False | False | Privileged user with non-phishing-resistant MFA (Virtual (TOTP)) | None |
+| 123456789012 | carol | arn:...:user/carol | False | None | False | None | False | True | None | None |
+
+How to read this:
+- **alice** (admin with a YubiKey) — compliant.
+- **bob** (admin with only Google Authenticator) — *non-compliant*; you
+  need to issue bob a hardware key.
+- **carol** (regular user without MFA) — compliant for *this* control;
+  this control only governs *privileged* users.
+- **root account** — has MFA enabled. AWS doesn't expose the MFA type for
+  the root account, so the script can only confirm "MFA on/off", not
+  whether it's phishing-resistant. You should manually verify the root
+  account uses a hardware key.
+
+---
+
 
 ## 9. Configuration files
 
@@ -481,12 +482,12 @@ python3 audits/nsf12.py --accounts 123456789012 --regions us-east-1 \
 ### `ModuleNotFoundError: No module named 'boto3'`
 
 Your virtual environment isn't activated, or `pip install -r requirements.txt`
-hasn't run. Redo [§4c–4d](#4c-activate-the-virtual-environment).
+hasn't run. Redo [§5c–5d](#5c-activate-the-virtual-environment).
 
 ### `botocore.exceptions.NoCredentialsError: Unable to locate credentials`
 
 The script couldn't find any AWS credentials. Check
-[§5](#5-setting-up-aws-access) — pass `--profile`, set `AWS_ACCESS_KEY_ID`/
+[§6](#6-setting-up-aws-access) — pass `--profile`, set `AWS_ACCESS_KEY_ID`/
 `AWS_SECRET_ACCESS_KEY`, or run inside something that grants credentials
 automatically (EC2 instance role, SSO session).
 
