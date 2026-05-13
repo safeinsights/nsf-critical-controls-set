@@ -82,11 +82,11 @@ its docstring and code.
 | 1 | [nsf1.py](aws/audits/nsf1.py) | Privileged-account MFA | Every IAM user with admin-grade policies has a FIDO2 / hardware MFA device. |
 | 2 | [nsf2.py](aws/audits/nsf2.py) | Remote-access MFA | Client VPN, WorkSpaces, and remote-access IAM policies require MFA. |
 | 3 | [nsf3.py](aws/audits/nsf3.py) | Limited admin scope | No IAM users / roles have unbounded `*:*` admin permissions outside dedicated admin accounts. |
-| 4 | [nsf4.py](aws/audits/nsf4.py) | Anti-malware deployed | GuardDuty + Security Hub enabled across regions; EC2 instances are SSM-managed (can receive AV). |
-| 5 | [nsf5.py](aws/audits/nsf5.py) | EDR functionality | GuardDuty Runtime Monitoring is enabled for EC2 / ECS / EKS. |
+| 4 | [nsf4.py](aws/audits/nsf4.py) | Anti-malware deployed **(AWS-only — see note)** | GuardDuty + Security Hub enabled across regions; EC2 instances are SSM-managed (can receive AV). |
+| 5 | [nsf5.py](aws/audits/nsf5.py) | EDR functionality **(AWS-only — see note)** | GuardDuty Runtime Monitoring is enabled for EC2 / ECS / EKS. |
 | 6 | [nsf6.py](aws/audits/nsf6.py) | Immutable system backups | AWS Backup vaults have vault-lock; backup S3 buckets have Object Lock + WORM. |
 | 7 | [nsf7.py](aws/audits/nsf7.py) | Immutable research-data backups | S3 buckets tagged as research data have versioning, Object Lock, and lifecycle rules preventing early deletion. |
-| 8 | [nsf8.py](aws/audits/nsf8.py) | Backup integrity testing | AWS Backup has a successful restore job per vault within the past year. |
+| 8 | [nsf8.py](aws/audits/nsf8.py) | Backup integrity testing **(partial — see note)** | AWS Backup has a successful restore job per vault within the past year. |
 | 9 | [nsf9.py](aws/audits/nsf9.py) | Log collection | CloudTrail multi-region trail with CloudWatch Logs integration; VPC Flow Logs on every VPC; log retention ≥ 365 days. |
 | 10 | [nsf10.py](aws/audits/nsf10.py) | Network segmentation | No default-VPC use; security groups don't allow `0.0.0.0/0`; subnets are properly public/private. |
 | 11 | [nsf11.py](aws/audits/nsf11.py) | CI inventory | VPN endpoints, Transit Gateways, Direct Connect, DNS zones, IAM resources are all tagged and discoverable. |
@@ -94,6 +94,44 @@ its docstring and code.
 | 13 | [nsf13.py](aws/audits/nsf13.py) | Hardening standards **(AWS-only)** | AWS Config recording all resource types with rules + conformance packs; Security Hub CIS / AWS-Foundational standards enabled; SSM State Manager associations exist. |
 
 ### Scope caveats (read this before drawing conclusions)
+
+**NSF4 (Anti-malware deployed)** — `nsf4.py` only checks AWS-native
+signal: GuardDuty enablement (incl. Malware Protection for EC2),
+Security Hub enablement, and whether EC2 instances are registered with
+Systems Manager (a prerequisite for centrally deploying any AV agent).
+It does **not** know whether a third-party endpoint protection product
+(CrowdStrike, SentinelOne, Microsoft Defender, ClamAV, etc.) is actually
+installed and running on each host. If you rely on a third-party AV /
+EDR, pull that coverage report from the vendor's console (or your MDM /
+SCCM / Intune inventory) and combine it with this script's output for a
+complete picture. Hosts outside AWS (developer laptops, on-prem
+research equipment, lab instrumentation) are out of scope here and must
+be reported from their own management systems.
+
+**NSF5 (EDR functionality)** — `nsf5.py` only checks AWS-native EDR
+signal: GuardDuty Runtime Monitoring coverage for EC2, ECS, and EKS,
+plus RDS / Lambda protection. It does **not** know whether a third-party
+EDR agent (CrowdStrike Falcon, SentinelOne, Microsoft Defender for
+Endpoint, Carbon Black, Elastic Defend, etc.) is installed and reporting
+on each host. If your endpoint detection-and-response strategy depends
+on a vendor EDR, pull the coverage / health report from that vendor's
+console and combine it with this script's output. Hosts outside AWS
+(developer laptops, on-prem research equipment, instrument workstations)
+are out of scope here and must be reported from their own management
+systems.
+
+**NSF8 (Backup integrity testing)** — `nsf8.py` only verifies that AWS
+Backup has *executed* a restore job per vault within the past year and
+that the job reported success. AWS reports "success" the moment the
+restore operation finishes — it does **not** confirm that the restored
+data is usable. A complete integrity test must *also* include a manual or
+scripted step that proves the restored copy is functional: opening the
+database, comparing checksums against the original, walking a sample of
+files, running an application against the recovered volume, etc. Keep a
+log of those manual verification steps and pair them with the report
+this script produces. Backups for systems and data **not** managed by
+AWS Backup (e.g. third-party SaaS exports, on-premises tape, Snowflake
+exports) are out of scope here and must be tested separately.
 
 **NSF12 (Vulnerability management)** — `nsf12.py` only covers AWS-native
 signal. A complete vulnerability-management program must *also* include
