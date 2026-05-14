@@ -1,10 +1,32 @@
-# NSF Critical Control Set — AWS Audit Toolkit
+# NSF Critical Control Set — Cloud Audit Toolkit
 
-Python scripts that collect evidence from your AWS accounts to show how
+Python scripts that collect evidence from your cloud accounts to show how
 well you meet each of the
-[NSF Critical Controls](https://nsf-gov-resources.nsf.gov/files/Research-Infrastructure-Guide-January-2025.pdf), section 5.3.6, page 308. One script per
-control. Each script logs into AWS (read-only), inspects the relevant
-services, and writes a report you can hand to an auditor.
+[NSF Critical Controls](https://nsf-gov-resources.nsf.gov/files/Research-Infrastructure-Guide-January-2025.pdf),
+section 5.3.6, page 308. One script per control, organized per cloud
+provider. Each script logs into the cloud (read-only), inspects the
+relevant services, and writes a report you can hand to an auditor.
+
+The toolkit is designed to extend across the major public clouds research
+infrastructure runs on. AWS coverage is implemented and
+production-ready; GCP and Azure are planned ports and currently stubs.
+
+## Cloud support
+
+| Cloud | Status | Where it lives |
+|---|---|---|
+| **AWS** | ✅ Available — 13 audits, IAM policy templates, Jenkins pipelines, pytest suite | [aws/](aws/) |
+| **GCP** | 🕒 Planned — not yet implemented | see [§ GCP](#gcp-planned) |
+| **Azure** | 🕒 Planned — not yet implemented | see [§ Azure](#azure-planned) |
+
+Each provider section below is self-contained: prerequisites, credential
+setup, running, reports, troubleshooting, and CI scheduling all live with
+the cloud they apply to. If you only care about AWS, you can skip the
+others entirely.
+
+---
+
+## AWS
 
 > **TL;DR for the experienced user**
 >
@@ -18,9 +40,7 @@ services, and writes a report you can hand to an auditor.
 > Reports land in the current directory as `nsf1-YYYY-MM-DD.csv`. Read on
 > for setup, AWS credentials, troubleshooting, and what each report means.
 
----
-
-## Table of contents
+### Table of contents (AWS)
 
 1. [What this does, in plain English](#1-what-this-does-in-plain-english)
 2. [The controls explained](#2-the-controls-explained)
@@ -44,7 +64,7 @@ services, and writes a report you can hand to an auditor.
 
 ---
 
-## 1. What this does, in plain English
+### 1. What this does, in plain English
 
 The U.S. National Science Foundation publishes a set of "Critical Controls"
 that funded research infrastructure is expected to meet — things like
@@ -72,7 +92,7 @@ contains nothing but `Get*`, `List*`, and `Describe*` actions.
 
 ---
 
-## 2. The controls explained
+### 2. The controls explained
 
 Each script audits one NSF Critical Control. Click the script link to read
 its docstring and code.
@@ -93,7 +113,7 @@ its docstring and code.
 | 12 | [nsf12.py](aws/audits/nsf12.py) | Vulnerability mgmt **(partial)** | Inspector v2 enabled; Security Hub high/critical findings count; SSM Patch Manager compliance. |
 | 13 | [nsf13.py](aws/audits/nsf13.py) | Hardening standards **(AWS-only)** | AWS Config recording all resource types with rules + conformance packs; Security Hub CIS / AWS-Foundational standards enabled; SSM State Manager associations exist. |
 
-### Scope caveats (read this before drawing conclusions)
+#### Scope caveats (read this before drawing conclusions)
 
 **NSF4 (Anti-malware deployed)** — `nsf4.py` only checks AWS-native
 signal: GuardDuty enablement (incl. Malware Protection for EC2),
@@ -153,7 +173,7 @@ the tabletop exercise records by hand.
 
 ---
 
-## 3. Glossary — terms you'll see
+### 3. Glossary — terms you'll see
 
 If any of these are unfamiliar, the rest of this README will make a lot more
 sense after a quick read of this section.
@@ -175,7 +195,7 @@ sense after a quick read of this section.
 
 ---
 
-## 4. Before you start (prerequisites)
+### 4. Before you start (prerequisites)
 
 You'll need:
 
@@ -198,9 +218,9 @@ You do **not** need to be a developer, but you should be comfortable with:
 
 ---
 
-## 5. Installation walkthrough
+### 5. Installation walkthrough
 
-### 5a. Open a terminal in the project folder
+#### 5a. Open a terminal in the project folder
 
 Wherever you cloned this repo, change into the `nsf-critical-control-set`
 directory:
@@ -209,7 +229,7 @@ directory:
 cd path/to/nsf-critical-control-set
 ```
 
-### 5b. Create a Python virtual environment
+#### 5b. Create a Python virtual environment
 
 A *virtual environment* keeps the toolkit's Python packages separate from
 the rest of your system. Run this once:
@@ -221,7 +241,7 @@ python3 -m venv venv
 
 That creates a folder called `venv/` inside `aws/`.
 
-### 5c. Activate the virtual environment
+#### 5c. Activate the virtual environment
 
 You need to do this **every time** you open a new terminal:
 
@@ -236,7 +256,7 @@ You need to do this **every time** you open a new terminal:
 Your prompt will gain a `(venv)` prefix. That tells you the right Python
 is active.
 
-### 5d. Install the dependencies
+#### 5d. Install the dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -245,7 +265,7 @@ pip install -r requirements.txt
 This installs `boto3` (AWS SDK) and `pyyaml` (YAML support). Should take
 under a minute.
 
-### 5e. Sanity check
+#### 5e. Sanity check
 
 ```bash
 python3 audits/nsf1.py --help
@@ -259,12 +279,12 @@ You're done with installation.
 
 ---
 
-## 6. Setting up AWS access
+### 6. Setting up AWS access
 
 The scripts need to read your AWS configuration. There are three ways to
 give them access, in order of recommendation:
 
-### 6a. Recommended: a dedicated read-only audit role (production)
+#### 6a. Recommended: a dedicated read-only audit role (production)
 
 This is the right setup for any recurring / unattended audit (Jenkins, cron).
 
@@ -283,7 +303,7 @@ This is the right setup for any recurring / unattended audit (Jenkins, cron).
 Then run the scripts with `--role NSF-AuditReadOnly` (and, if your trust
 policy requires it, `--external-id <secret>`).
 
-### 6b. Simpler: an AWS named profile (workstation)
+#### 6b. Simpler: an AWS named profile (workstation)
 
 If you already use the AWS CLI and have profiles configured in
 `~/.aws/credentials` / `~/.aws/config`, you can point the scripts at one:
@@ -296,7 +316,7 @@ Don't have profiles yet? Run `aws configure` (from the AWS CLI) and follow
 the prompts. AWS provides
 [a guide here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
 
-### 6c. Simplest (one-off): export AWS credentials in your shell
+#### 6c. Simplest (one-off): export AWS credentials in your shell
 
 If you have temporary AWS credentials (from SSO or `aws sts assume-role`),
 export them and run with no `--role` / `--profile` flag:
@@ -308,7 +328,7 @@ export AWS_SESSION_TOKEN=...      # if temporary credentials
 python3 audits/nsf1.py --accounts 123456789012 --regions us-east-1
 ```
 
-### Which credential method does the script actually use?
+#### Which credential method does the script actually use?
 
 The script picks one strategy per AWS account, in this priority order:
 
@@ -325,12 +345,12 @@ The script picks one strategy per AWS account, in this priority order:
 
 ---
 
-## 7. Running your first audit
+### 7. Running your first audit
 
 Let's run `nsf1.py` — the simplest audit (it only reads IAM, which is a
 global service, so no `--regions` is required).
 
-### 7a. Make sure your credentials are working
+#### 7a. Make sure your credentials are working
 
 ```bash
 aws sts get-caller-identity
@@ -339,7 +359,7 @@ aws sts get-caller-identity
 You should see your account ID and a user/role ARN. If you get an error,
 your AWS credentials aren't set up — go back to [§6](#6-setting-up-aws-access).
 
-### 7b. Run the audit
+#### 7b. Run the audit
 
 If you have a single AWS account and are using your default credentials:
 
@@ -349,7 +369,7 @@ python3 audits/nsf1.py --accounts 123456789012
 
 Replace `123456789012` with your real account ID (12 digits).
 
-### 7c. Read the output
+#### 7c. Read the output
 
 While the script runs you'll see log lines on stderr:
 
@@ -379,7 +399,7 @@ Reports saved:
 A report file `nsf1-2026-05-13.csv` is now in your current directory. Open
 it in Excel, Numbers, or Google Sheets.
 
-### 7d. The script's exit code
+#### 7d. The script's exit code
 
 The script returns an exit code so you (or CI) can tell whether the audit
 "passed":
@@ -394,7 +414,7 @@ In CI, treat non-zero as "review the report".
 
 ---
 
-## 8. Understanding the report
+### 8. Understanding the report
 
 Each report is a flat table. Columns vary by control, but the last three
 are always:
@@ -408,7 +428,7 @@ are always:
   value here means *you can't trust the Compliant column for this row* —
   fix the IAM permissions and re-run.
 
-### Example: `nsf1-2026-05-13.csv`
+#### Example: `nsf1-2026-05-13.csv`
 
 | AccountId | UserName | UserArn | IsPrivileged | PrivilegedPolicies | MFAEnabled | MFAType | PhishingResistant | Compliant | Issues | AuditErrors |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -431,7 +451,7 @@ How to read this:
 ---
 
 
-## 9. Configuration files
+### 9. Configuration files
 
 Three optional JSON files in [aws/config/](aws/config/) let you avoid
 passing the same flags every time. Two ship as `*.example.json`
@@ -466,7 +486,7 @@ to a malformed account).
 
 ---
 
-## 10. Output formats
+### 10. Output formats
 
 Every script accepts `--format`, comma-separated. Files are written to
 `<output-dir>/nsfN-YYYY-MM-DD.<ext>`.
@@ -487,7 +507,7 @@ python3 audits/nsf1.py --accounts 123456789012 --format csv,json,yaml
 
 ---
 
-## 11. Logging and verbosity
+### 11. Logging and verbosity
 
 All scripts log via Python's standard `logging` module under the
 `nsf_audit` namespace. Per-script child loggers (`nsf_audit.nsf1`, …)
@@ -521,14 +541,14 @@ python3 audits/nsf12.py --accounts 123456789012 --regions us-east-1 \
 
 ---
 
-## 12. Troubleshooting common errors
+### 12. Troubleshooting common errors
 
-### `ModuleNotFoundError: No module named 'boto3'`
+#### `ModuleNotFoundError: No module named 'boto3'`
 
 Your virtual environment isn't activated, or `pip install -r requirements.txt`
 hasn't run. Redo [§5c–5d](#5c-activate-the-virtual-environment).
 
-### `botocore.exceptions.NoCredentialsError: Unable to locate credentials`
+#### `botocore.exceptions.NoCredentialsError: Unable to locate credentials`
 
 The script couldn't find any AWS credentials. Check
 [§6](#6-setting-up-aws-access) — pass `--profile`, set `AWS_ACCESS_KEY_ID`/
@@ -537,7 +557,7 @@ automatically (EC2 instance role, SSO session).
 
 Verify with `aws sts get-caller-identity` *before* running the audit.
 
-### `botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the AssumeRole operation`
+#### `botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the AssumeRole operation`
 
 The principal you're running as isn't allowed to assume the audit role in
 the target account. Check the audit role's **trust policy** in that
@@ -547,7 +567,7 @@ account ([aws/policy/nsf-audit-trust-policy.json](aws/policy/nsf-audit-trust-pol
 - If a `Condition: StringEquals: sts:ExternalId` is set, are you passing
   `--external-id` (or `AWS_EXTERNAL_ID`) with the matching value?
 
-### Many `NSF-AUDIT-PERMISSION-ERROR` lines in the log
+#### Many `NSF-AUDIT-PERMISSION-ERROR` lines in the log
 
 The audit role lacks one or more read permissions. The most common cause
 is using a role with `ViewOnlyAccess` for NSF12/13 — those need extra
@@ -558,32 +578,32 @@ the role.
 The script will exit non-zero whenever any permission errors occurred
 (even if no compliance failures were found) so this gets noticed in CI.
 
-### `ValueError: Invalid AWS account ID: '1234'. Expected 12 numeric digits.`
+#### `ValueError: Invalid AWS account ID: '1234'. Expected 12 numeric digits.`
 
 The script refused an account ID because it isn't 12 digits. Check your
 `--accounts` value or `aws/config/accounts.json`.
 
-### `ValueError: Refusing to write into symlinked path: …`
+#### `ValueError: Refusing to write into symlinked path: …`
 
 Someone made `--output-dir` a symbolic link, or (under Jenkins) a parent
 directory inside `$WORKSPACE` is a symlink. The script refuses these as a
 safety measure. Use a regular directory.
 
-### The CSV opens in Excel and starts with `'=…`
+#### The CSV opens in Excel and starts with `'=…`
 
 That's the formula-injection defense (a tag value or resource name in your
 AWS account starts with `=`, `+`, `-`, or `@`). The leading single quote
 is stripped by Excel on display; the underlying value is intact. This is
 intentional.
 
-### `argparse` error: `not enough arguments for format string`
+#### `argparse` error: `not enough arguments for format string`
 
 You're on an old copy of the toolkit. Re-pull the repo — this was an
 escaping bug in nsf5/nsf8/nsf9 argparse help text that's been fixed.
 
 ---
 
-## 13. Scheduling with Jenkins (or other CI)
+### 13. Scheduling with Jenkins (or other CI)
 
 Sample Jenkinsfiles for each control live in [aws/pipelines/](aws/pipelines/).
 Each one:
@@ -611,7 +631,7 @@ copy the shell commands from the Jenkinsfiles' `sh '''…'''` blocks.
 
 ---
 
-## 14. Uploading reports elsewhere
+### 14. Uploading reports elsewhere
 
 > Earlier versions of this toolkit shipped a built-in Google Drive
 > uploader. **That has been removed** to keep the scripts portable: they
@@ -629,7 +649,7 @@ stage.
 
 ---
 
-## 15. Evidence integrity guarantees
+### 15. Evidence integrity guarantees
 
 The toolkit enforces several properties so the reports are
 trustworthy attestation evidence. These are not just "best effort" — they
@@ -663,7 +683,7 @@ if they ever regress.
 
 ---
 
-## 16. Required IAM permissions
+### 16. Required IAM permissions
 
 A minimum-privilege IAM policy + matching trust policy live in
 [aws/policy/](aws/policy/). See [aws/policy/README.md](aws/policy/README.md)
@@ -674,7 +694,7 @@ NSF1 – NSF11 but may need small additions for NSF12 / NSF13.
 
 ---
 
-## 17. Running the test suite
+### 17. Running the test suite
 
 The toolkit ships a pytest suite. **It doesn't touch AWS** — fake IAM
 stubs and mocked sessions cover the audit code paths.
@@ -714,7 +734,7 @@ Three test files:
 
 ---
 
-## 18. CLI reference (all flags)
+### 18. CLI reference (all flags)
 
 Every script accepts these flags. Run any script with `--help` to see its
 specific examples.
@@ -732,7 +752,7 @@ specific examples.
 | `-q` / `--quiet` | Suppress INFO; only WARNING and above are emitted. |
 | `--log-file <path>` | Write logs to this file instead of stderr. |
 
-### Environment variables
+#### Environment variables
 
 | Variable | Equivalent flag |
 |---|---|
@@ -741,7 +761,7 @@ specific examples.
 | `AWS_EXTERNAL_ID` | `--external-id` |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | Standard boto3 default-credentials chain |
 
-### Examples
+#### Examples
 
 ```bash
 # 1. Simplest: one account, default region, default credentials
@@ -770,7 +790,7 @@ python3 audits/nsf6.py --quiet --log-file /var/log/nsf_audit/nsf6.log
 
 ---
 
-## 19. Frequently asked questions
+### 19. Frequently asked questions
 
 **Q. Do I have to enable every AWS service the scripts read from?**
 No. If a service isn't enabled in your account, the script records that
@@ -811,9 +831,11 @@ the agent — if your Jenkins is on Windows, port them to `bat`/`powershell`
 steps or run agents on Linux.
 
 **Q. Can the toolkit audit GCP or Azure too?**
-Not today. Only AWS is implemented. The structure (one script per
-control, library-driven IO) would translate to other clouds, but you'd
-need to write the GCP/Azure equivalents of `aws/audits/nsfN.py`.
+Not yet. GCP and Azure ports are planned — see
+[§ GCP](#gcp-planned) and [§ Azure](#azure-planned) below. The
+AWS implementation here (one script per control, library-driven IO,
+read-only credentials, evidence-integrity tests) is the template the
+other-cloud ports will follow.
 
 **Q. Where do I get help / report bugs?**
 This repository's issue tracker. For suspected security issues, see the
@@ -824,6 +846,82 @@ don't open a public issue for those.
 See [CONTRIBUTING.md](CONTRIBUTING.md) — it walks through dev setup,
 project conventions, the PR checklist, and a step-by-step guide for
 adding a new audit script.
+
+---
+
+## GCP (planned)
+
+A Google Cloud Platform port of the toolkit is on the roadmap. It is
+**not yet implemented** — there is no `gcp/` directory and no audit
+scripts to run.
+
+When it lands, it will follow the same shape as the AWS implementation:
+
+- One script per applicable NSF Critical Control, under `gcp/audits/`.
+- A shared library under `gcp/lib/` wrapping the Google Cloud client
+  libraries with the same logging, output-format, and evidence-integrity
+  guarantees the AWS scripts already enforce.
+- Read-only credentials only — a service account with a minimum-privilege
+  custom role (analogous to the AWS audit policy), with templates in
+  `gcp/policy/`.
+- CSV / JSON / YAML / text outputs with the same column conventions.
+- Sample CI pipelines under `gcp/pipelines/`.
+
+Likely service mappings (subject to change as the port is designed):
+
+| Control | AWS sources | Likely GCP sources |
+|---|---|---|
+| Privileged-account MFA | IAM users + MFA devices | Cloud Identity / Workspace admin, 2-Step Verification enforcement |
+| Limited admin scope | IAM policies | Cloud IAM role bindings, Organization Policy |
+| Anti-malware / EDR | GuardDuty, Security Hub | Security Command Center, VM Manager |
+| Immutable backups | AWS Backup vault-lock, S3 Object Lock | Backup and DR Service, GCS bucket lock / retention policies |
+| Log collection | CloudTrail, VPC Flow Logs | Cloud Audit Logs, VPC Flow Logs |
+| Network segmentation | Default VPC, SG `0.0.0.0/0` | VPC firewall rules, Shared VPC, default-network checks |
+| Vulnerability mgmt | Inspector v2 | Security Command Center vulnerability findings, OS Config |
+| Hardening standards | AWS Config + Security Hub | Security Command Center posture, OS Config policies |
+
+Want to help with the port? Open an issue describing the scope you'd
+tackle (e.g. "GCP1 + GCP3 in a single PR"), then see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the general dev workflow — the AWS
+patterns there are the template to follow.
+
+---
+
+## Azure (planned)
+
+A Microsoft Azure port of the toolkit is on the roadmap. It is **not yet
+implemented** — there is no `azure/` directory and no audit scripts to
+run.
+
+When it lands, it will follow the same shape as the AWS implementation:
+
+- One script per applicable NSF Critical Control, under `azure/audits/`.
+- A shared library under `azure/lib/` wrapping the Azure SDK for Python
+  with the same logging, output-format, and evidence-integrity guarantees
+  the AWS scripts already enforce.
+- Read-only credentials only — a service principal (or managed identity)
+  with the built-in `Reader` role plus narrow additions, with
+  role-assignment templates in `azure/policy/`.
+- CSV / JSON / YAML / text outputs with the same column conventions.
+- Sample CI pipelines under `azure/pipelines/`.
+
+Likely service mappings (subject to change as the port is designed):
+
+| Control | AWS sources | Likely Azure sources |
+|---|---|---|
+| Privileged-account MFA | IAM users + MFA devices | Entra ID conditional access, authentication methods, privileged roles |
+| Limited admin scope | IAM policies | Azure RBAC role assignments, Privileged Identity Management |
+| Anti-malware / EDR | GuardDuty, Security Hub | Microsoft Defender for Cloud, Defender for Endpoint coverage |
+| Immutable backups | AWS Backup vault-lock, S3 Object Lock | Azure Backup with immutable vaults, Storage Account immutability policies |
+| Log collection | CloudTrail, VPC Flow Logs | Activity Log, NSG flow logs, Log Analytics workspace retention |
+| Network segmentation | Default VPC, SG `0.0.0.0/0` | NSG rules, Azure Firewall, VNet peering posture |
+| Vulnerability mgmt | Inspector v2 | Defender for Cloud vulnerability assessment, Update Manager |
+| Hardening standards | AWS Config + Security Hub | Azure Policy compliance, Defender for Cloud secure score, regulatory compliance dashboards |
+
+Want to help with the port? Open an issue describing the scope you'd
+tackle (e.g. "Azure1 + Azure3 in a single PR"), then see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the general dev workflow — the AWS
+patterns there are the template to follow.
 
 ---
 
@@ -857,4 +955,8 @@ nsf-critical-control-set/
     │   └── test_nsf1_integration.py
     ├── requirements.txt
     └── requirements-dev.txt
+
+# Planned (not yet present):
+# ├── gcp/    — see § GCP (planned)
+# └── azure/  — see § Azure (planned)
 ```
